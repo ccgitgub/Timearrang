@@ -449,6 +449,7 @@ function renderAssignmentTable(timeSlots) {
           <option value="">未分配</option>
           ${state.teachers.map((t) => `<option value="${t.id}" ${t.id === a.teacher_id ? 'selected' : ''}>${escapeHtml(t.name)}${t.active ? '' : ' (假)'}</option>`).join('')}
         </select>
+        ${a.locked ? '<span class="locked-badge" title="固定指派，「平均分配 / 重新分配」不會更改此安排">固定</span>' : ''}
       </td>
     </tr>
   `).join('');

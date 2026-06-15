@@ -171,6 +171,17 @@ select, .data-table select {
   max-width: 100%;
 }
 
+.locked-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: #fef3c7;
+  color: #92400e;
+  white-space: nowrap;
+}
+
 /* 老師名單 */
 #teacherTableBody input[type="text"] {
   border: 1px solid transparent;

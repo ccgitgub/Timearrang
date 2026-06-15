@@ -41,7 +41,7 @@ async function getScheduleDetail(scheduleId) {
     const duties = [];
     for (const duty of dutyRows) {
       const assignments = await db.all(
-        `SELECT a.id, a.slot_index, a.teacher_id, t.name AS teacher_name
+        `SELECT a.id, a.slot_index, a.teacher_id, a.locked, t.name AS teacher_name
          FROM assignments a
          LEFT JOIN teachers t ON t.id = a.teacher_id
          WHERE a.duty_id = ? ORDER BY a.slot_index`,
@@ -169,6 +169,18 @@ app.post('/api/schedules/:id/duplicate', wrap(async (req, res) => {
         ])
       ).lastInsertRowid;
       await syncDutySeats(newDutyId, duty.needed_count);
+
+      const lockedAssignments = await db.all(
+        'SELECT slot_index, teacher_id FROM assignments WHERE duty_id = ? AND locked = 1',
+        [duty.id]
+      );
+      for (const a of lockedAssignments) {
+        await db.run('UPDATE assignments SET teacher_id = ?, locked = 1 WHERE duty_id = ? AND slot_index = ?', [
+          a.teacher_id,
+          newDutyId,
+          a.slot_index,
+        ]);
+      }
     }
 
     const unavail = await db.all('SELECT teacher_id FROM unavailability WHERE time_slot_id = ?', [slot.id]);
@@ -301,7 +313,13 @@ app.post('/api/schedules/:id/generate', wrap(async (req, res) => {
     id: slot.id,
     start_time: slot.start_time,
     end_time: slot.end_time,
-    duties: slot.duties.map((d) => ({ id: d.id, needed_count: d.needed_count })),
+    duties: slot.duties.map((d) => ({
+      id: d.id,
+      needed_count: d.needed_count,
+      lockedSeats: new Map(
+        d.assignments.filter((a) => a.locked && a.teacher_id != null).map((a) => [a.slot_index, a.teacher_id])
+      ),
+    })),
     unavailable: new Set(slot.unavailable.map((u) => u.teacher_id)),
   }));
 
