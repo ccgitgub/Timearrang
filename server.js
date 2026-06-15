@@ -2,7 +2,7 @@ const path = require('node:path');
 const express = require('express');
 const { Packer } = require('docx');
 const db = require('./db');
-const { addDefaultSlotsAndDuties } = require('./lib/db/schema');
+const { addDefaultSlotsAndDuties, CLASS_TEACHERS } = require('./lib/db/schema');
 const { generateAssignments, durationMinutes } = require('./lib/scheduler');
 const { buildScheduleDocument } = require('./lib/exportDocx');
 
@@ -135,6 +135,38 @@ app.put('/api/schedules/:id', wrap(async (req, res) => {
   res.json(await getScheduleDetail(req.params.id));
 }));
 
+app.put('/api/schedules/:id/lock-last-slot', wrap(async (req, res) => {
+  const schedule = await db.get('SELECT * FROM schedules WHERE id = ?', [req.params.id]);
+  if (!schedule) return res.status(404).json({ error: '找不到表格' });
+
+  const locked = req.body.locked ? 1 : 0;
+  await db.run('UPDATE schedules SET lock_last_slot = ? WHERE id = ?', [locked, schedule.id]);
+
+  const lastSlot = await db.get(
+    'SELECT * FROM time_slots WHERE schedule_id = ? ORDER BY start_time DESC, id DESC LIMIT 1',
+    [schedule.id]
+  );
+  if (lastSlot) {
+    const duties = await db.all('SELECT * FROM duties WHERE time_slot_id = ? ORDER BY id', [lastSlot.id]);
+    for (const duty of duties) {
+      if (locked) {
+        const teacherName = CLASS_TEACHERS[duty.name];
+        if (!teacherName) continue;
+        const teacher = await db.get('SELECT id FROM teachers WHERE name = ?', [teacherName]);
+        if (!teacher) continue;
+        await db.run('UPDATE assignments SET teacher_id = ?, locked = 1 WHERE duty_id = ? AND slot_index = 0', [
+          teacher.id,
+          duty.id,
+        ]);
+      } else {
+        await db.run('UPDATE assignments SET locked = 0 WHERE duty_id = ?', [duty.id]);
+      }
+    }
+  }
+
+  res.json(await getScheduleDetail(schedule.id));
+}));
+
 app.delete('/api/schedules/:id', wrap(async (req, res) => {
   await db.run('DELETE FROM schedules WHERE id = ?', [req.params.id]);
   res.status(204).end();
@@ -146,7 +178,13 @@ app.post('/api/schedules/:id/duplicate', wrap(async (req, res) => {
 
   const name = (req.body.name || src.name).trim();
   const date = req.body.date !== undefined ? req.body.date : src.date;
-  const newId = (await db.run('INSERT INTO schedules (name, date) VALUES (?, ?)', [name, date])).lastInsertRowid;
+  const newId = (
+    await db.run('INSERT INTO schedules (name, date, lock_last_slot) VALUES (?, ?, ?)', [
+      name,
+      date,
+      src.lock_last_slot,
+    ])
+  ).lastInsertRowid;
 
   const slots = await db.all('SELECT * FROM time_slots WHERE schedule_id = ? ORDER BY start_time, id', [src.id]);
   for (const slot of slots) {

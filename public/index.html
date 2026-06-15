@@ -82,6 +82,10 @@
       <div class="card">
         <h2>自動分配</h2>
         <p class="hint">按下按鈕後，系統會盡量令每位在職老師的「值勤總時數」相等，並盡量避免同一位老師連續兩個時段都要值勤（每節之間盡量有一節休息）。可重複按以重新分配，亦可在下方表格手動調整個別安排。</p>
+        <label class="checkbox-label">
+          <input type="checkbox" id="lockLastSlotToggle">
+          最後一節固定由班主任值勤（不會被「平均分配 / 重新分配」更改）
+        </label>
         <button id="generateBtn" class="primary large">平均分配 / 重新分配</button>
       </div>
 

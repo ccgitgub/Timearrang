@@ -221,6 +221,7 @@ function renderEditor() {
   const { schedule, timeSlots } = state.detail;
   document.getElementById('scheduleName').value = schedule.name;
   document.getElementById('scheduleDate').value = schedule.date || '';
+  document.getElementById('lockLastSlotToggle').checked = !!schedule.lock_last_slot;
   renderSlots(timeSlots);
   renderResults(timeSlots);
 }
@@ -397,6 +398,19 @@ slotsContainer.addEventListener('submit', async (e) => {
 });
 
 // ---------- generate & results ----------
+
+document.getElementById('lockLastSlotToggle').addEventListener('change', async (e) => {
+  if (!state.currentScheduleId) return;
+  const locked = e.target.checked;
+  try {
+    state.detail = await api('PUT', `/schedules/${state.currentScheduleId}/lock-last-slot`, { locked });
+    renderEditor();
+    showToast(locked ? '已恢復：最後一節固定由班主任值勤' : '已解除：最後一節可由「平均分配」安排');
+  } catch (err) {
+    e.target.checked = !locked;
+    showToast(err.message, true);
+  }
+});
 
 document.getElementById('generateBtn').addEventListener('click', async () => {
   if (!state.currentScheduleId) return;

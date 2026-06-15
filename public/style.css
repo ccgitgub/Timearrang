@@ -104,6 +104,19 @@ main {
 .card h2 { margin-top: 0; font-size: 1.05rem; }
 .hint { color: var(--muted); font-size: 0.85rem; margin-top: -0.25rem; }
 
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.checkbox-label input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
 .inline-form {
   display: flex;
   flex-wrap: wrap;
