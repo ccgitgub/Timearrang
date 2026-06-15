@@ -24,3 +24,22 @@ npm start
    - 標記該時段不可值勤的老師（例如該時段要上課）。
    - 按「平均分配 / 重新分配」，系統會自動分配，令每位老師的值勤總時數盡量相等。
    - 可在下方表格手動調整個別老師的安排，並可匯出 CSV 或列印。
+
+## 部署到 Railway
+
+本專案已包含 `railway.json` 及 `.nvmrc`，可直接連結 GitHub repo 到 Railway 部署：
+
+1. 在 Railway 開新 Project → **Deploy from GitHub repo**，選擇本 repo。
+2. Railway 會自動使用 Nixpacks 偵測 Node 專案，執行 `npm install` 及 `npm start`。
+3. 不需要手動設定 `PORT`，伺服器會自動使用 Railway 提供的 `PORT` 環境變數。
+
+### 資料持久化（重要）
+
+本工具使用 SQLite 檔案 (`data/timearrang.db`) 儲存資料。Railway 的檔案系統在重新部署
+（redeploy）後會重置，因此建議：
+
+1. 在 Railway 專案中為此 service 新增一個 **Volume**。
+2. 將 Volume 的 Mount path 設為 `/app/data`。
+3. （可選）新增環境變數 `DATA_DIR=/app/data`，明確指定資料庫存放位置。
+
+這樣老師名單、值勤表等資料就會在重新部署後保留。

@@ -7,6 +7,8 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get('/healthz', (req, res) => res.json({ ok: true }));
+
 // ---------- helpers ----------
 
 function syncDutySeats(dutyId, neededCount) {
@@ -346,6 +348,7 @@ app.get('/api/schedules/:id/summary', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Timearrang server running on http://localhost:${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`Timearrang server running on http://${HOST}:${PORT}`);
 });
