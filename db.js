@@ -81,11 +81,25 @@ const DEFAULT_SLOTS = [
   ['第六節', '12:50', '13:00'],
 ];
 
+// 每節預設職務（各班巡查），預設各需 1 人
+const DEFAULT_DUTIES = [
+  '1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '4C', '4D',
+  '5A', '5B', '5C', '6A', '6B', '6C',
+];
+
 const scheduleCount = db.prepare('SELECT COUNT(*) AS count FROM schedules').get().count;
 if (scheduleCount === 0) {
   const scheduleId = db.prepare('INSERT INTO schedules (name, date) VALUES (?, ?)').run('15/6/2026(一)', '2026-06-15').lastInsertRowid;
   const insertSlot = db.prepare('INSERT INTO time_slots (schedule_id, label, start_time, end_time, sort_order) VALUES (?, ?, ?, ?, ?)');
-  DEFAULT_SLOTS.forEach(([label, start, end], index) => insertSlot.run(scheduleId, label, start, end, index));
+  const insertDuty = db.prepare('INSERT INTO duties (time_slot_id, name, needed_count, sort_order) VALUES (?, ?, 1, ?)');
+  const insertAssignment = db.prepare('INSERT INTO assignments (duty_id, slot_index, teacher_id) VALUES (?, 0, NULL)');
+  DEFAULT_SLOTS.forEach(([label, start, end], slotIndex) => {
+    const slotId = insertSlot.run(scheduleId, label, start, end, slotIndex).lastInsertRowid;
+    DEFAULT_DUTIES.forEach((name, dutyIndex) => {
+      const dutyId = insertDuty.run(slotId, name, dutyIndex).lastInsertRowid;
+      insertAssignment.run(dutyId);
+    });
+  });
 }
 
 module.exports = db;
