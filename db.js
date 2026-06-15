@@ -1,105 +1,20 @@
-const path = require('node:path');
-const fs = require('node:fs');
-const { DatabaseSync } = require('node:sqlite');
+// 資料庫連線：預設使用本機 SQLite 檔案；若設定了 Railway MySQL plugin 提供的
+// 連線資訊（MYSQL_URL / DATABASE_URL，或 MYSQLHOST 等個別變數），則改用 MySQL。
+function buildMysqlUrl() {
+  if (process.env.MYSQL_URL) return process.env.MYSQL_URL;
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  if (process.env.MYSQL_PUBLIC_URL) return process.env.MYSQL_PUBLIC_URL;
 
-const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  const { MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE, MYSQLPORT } = process.env;
+  if (MYSQLHOST && MYSQLDATABASE) {
+    const auth = `${encodeURIComponent(MYSQLUSER || 'root')}:${encodeURIComponent(MYSQLPASSWORD || '')}`;
+    const port = MYSQLPORT || 3306;
+    return `mysql://${auth}@${MYSQLHOST}:${port}/${MYSQLDATABASE}`;
+  }
 
-const db = new DatabaseSync(path.join(dataDir, 'timearrang.db'));
-
-db.exec('PRAGMA foreign_keys = ON');
-
-db.exec(`
-CREATE TABLE IF NOT EXISTS teachers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL UNIQUE,
-  active INTEGER NOT NULL DEFAULT 1,
-  sort_order INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS schedules (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  date TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS time_slots (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  schedule_id INTEGER NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
-  label TEXT NOT NULL,
-  start_time TEXT NOT NULL,
-  end_time TEXT NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS duties (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  time_slot_id INTEGER NOT NULL REFERENCES time_slots(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  needed_count INTEGER NOT NULL DEFAULT 1,
-  sort_order INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS unavailability (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  time_slot_id INTEGER NOT NULL REFERENCES time_slots(id) ON DELETE CASCADE,
-  teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
-  UNIQUE(time_slot_id, teacher_id)
-);
-
-CREATE TABLE IF NOT EXISTS assignments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  duty_id INTEGER NOT NULL REFERENCES duties(id) ON DELETE CASCADE,
-  slot_index INTEGER NOT NULL DEFAULT 0,
-  teacher_id INTEGER REFERENCES teachers(id) ON DELETE SET NULL,
-  UNIQUE(duty_id, slot_index)
-);
-`);
-
-// 預設老師名單（取自原始活動分工表），僅在老師名單為空時插入一次
-const DEFAULT_TEACHERS = [
-  'A時', 'B東', 'C思', 'D浩', 'E緻', 'F刁', 'G謝', 'H芬', 'I珍', 'K甄',
-  'L佩', 'M婉', 'N慧', 'P妍', 'Q劉', 'R珊', 'S涼', 'T毛', 'V祖', 'X樊',
-  'Y曉', 'Z蘇', 'BB勤', 'DD珈', 'EE依', 'FF賢', 'GG華', 'HH兒', 'JJ瑩',
-  'KK敏', 'OO萍', 'VV英', 'WW練',
-];
-
-const teacherCount = db.prepare('SELECT COUNT(*) AS count FROM teachers').get().count;
-if (teacherCount === 0) {
-  const insertTeacher = db.prepare('INSERT INTO teachers (name, active, sort_order) VALUES (?, 1, ?)');
-  DEFAULT_TEACHERS.forEach((name, index) => insertTeacher.run(name, index));
+  return null;
 }
 
-// 預設值勤表（取自原始活動分工表的時段），僅在尚未有任何值勤表時建立一次
-const DEFAULT_SLOTS = [
-  ['第一節', '08:30', '09:20'],
-  ['第二節', '09:20', '10:10'],
-  ['第三節', '10:25', '11:15'],
-  ['第四節', '11:15', '12:05'],
-  ['第五節', '12:25', '12:50'],
-  ['第六節', '12:50', '13:00'],
-];
+const mysqlUrl = buildMysqlUrl();
 
-// 每節預設職務（各班巡查），預設各需 1 人
-const DEFAULT_DUTIES = [
-  '1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '4C', '4D',
-  '5A', '5B', '5C', '6A', '6B', '6C',
-];
-
-const scheduleCount = db.prepare('SELECT COUNT(*) AS count FROM schedules').get().count;
-if (scheduleCount === 0) {
-  const scheduleId = db.prepare('INSERT INTO schedules (name, date) VALUES (?, ?)').run('15/6/2026(一)', '2026-06-15').lastInsertRowid;
-  const insertSlot = db.prepare('INSERT INTO time_slots (schedule_id, label, start_time, end_time, sort_order) VALUES (?, ?, ?, ?, ?)');
-  const insertDuty = db.prepare('INSERT INTO duties (time_slot_id, name, needed_count, sort_order) VALUES (?, ?, 1, ?)');
-  const insertAssignment = db.prepare('INSERT INTO assignments (duty_id, slot_index, teacher_id) VALUES (?, 0, NULL)');
-  DEFAULT_SLOTS.forEach(([label, start, end], slotIndex) => {
-    const slotId = insertSlot.run(scheduleId, label, start, end, slotIndex).lastInsertRowid;
-    DEFAULT_DUTIES.forEach((name, dutyIndex) => {
-      const dutyId = insertDuty.run(slotId, name, dutyIndex).lastInsertRowid;
-      insertAssignment.run(dutyId);
-    });
-  });
-}
-
-module.exports = db;
+module.exports = mysqlUrl ? require('./lib/db/mysql')(mysqlUrl) : require('./lib/db/sqlite')();
