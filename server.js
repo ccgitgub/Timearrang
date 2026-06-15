@@ -2,6 +2,7 @@ const path = require('node:path');
 const express = require('express');
 const { Packer } = require('docx');
 const db = require('./db');
+const { addDefaultSlotsAndDuties } = require('./lib/db/schema');
 const { generateAssignments, durationMinutes } = require('./lib/scheduler');
 const { buildScheduleDocument } = require('./lib/exportDocx');
 
@@ -115,6 +116,7 @@ app.post('/api/schedules', wrap(async (req, res) => {
   const date = req.body.date || null;
   if (!name) return res.status(400).json({ error: '請輸入表格名稱' });
   const r = await db.run('INSERT INTO schedules (name, date) VALUES (?, ?)', [name, date]);
+  await addDefaultSlotsAndDuties(db, r.lastInsertRowid);
   res.status(201).json(await getScheduleDetail(r.lastInsertRowid));
 }));
 
