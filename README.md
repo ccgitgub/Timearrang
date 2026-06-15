@@ -6,6 +6,8 @@
 
 ## 啟動
 
+本工具使用 **PostgreSQL** 儲存資料，啟動前請先準備一個可連線的 PostgreSQL 資料庫。
+
 ```bash
 npm install
 npm start
@@ -13,8 +15,21 @@ npm start
 
 然後在瀏覽器開啟 `http://localhost:3000`。
 
-預設資料會儲存在本機的 SQLite 資料庫（`data/timearrang.db`，會自動建立）。
-若設定了 MySQL 連線環境變數（見下方「使用 Railway MySQL 儲存資料」），則會自動改用 MySQL。
+### 資料庫連線設定
+
+伺服器啟動時會依以下順序決定連線字串：
+
+1. `DATABASE_URL`
+2. `DATABASE_PUBLIC_URL`
+3. `POSTGRES_URL`
+4. 由 `PGHOST`/`PGUSER`/`PGPASSWORD`/`PGDATABASE`/`PGPORT` 組合而成的連線字串
+5. 若以上都沒有設定，預設使用本機 `postgresql://postgres:postgres@localhost:5432/timearrang`
+
+本機開發可自行安裝 PostgreSQL 並建立 `timearrang` 資料庫（帳號密碼皆為 `postgres`），
+或設定 `DATABASE_URL` 指向任何可用的 PostgreSQL（包括 Railway 上的 PostgreSQL）。
+
+伺服器啟動時會自動建立所需的資料表（教師、值勤表、時段、職務等），並在資料表為空時
+載入預設的老師名單及範例值勤表。
 
 ## 使用流程
 
@@ -44,34 +59,14 @@ npm start
 2. Railway 會自動使用 Nixpacks 偵測 Node 專案，執行 `npm install` 及 `npm start`。
 3. 不需要手動設定 `PORT`，伺服器會自動使用 Railway 提供的 `PORT` 環境變數。
 
-### 資料持久化（重要）
+### 設定 PostgreSQL 資料庫（必要）
 
-本工具預設使用 SQLite 檔案 (`data/timearrang.db`) 儲存資料。Railway 的檔案系統在重新部署
-（redeploy）後會重置，因此建議二選一：
-
-**方法一：使用 Volume（SQLite）**
-
-1. 在 Railway 專案中為此 service 新增一個 **Volume**。
-2. 將 Volume 的 Mount path 設為 `/app/data`。
-3. （可選）新增環境變數 `DATA_DIR=/app/data`，明確指定資料庫存放位置。
-
-**方法二：使用 Railway 提供的 MySQL（建議用於多人協作 / 多個 service）**
-
-見下方「使用 Railway MySQL 儲存資料」。
-
-這樣老師名單、值勤表等資料就會在重新部署後保留。
-
-## 使用 Railway MySQL 儲存資料
-
-1. 在 Railway 專案中按 **+ New** → **Database** → **Add MySQL**，建立一個 MySQL service。
-2. 在本工具的 service 的 **Variables** 分頁，新增一個參照變數，把 MySQL service 提供的
-   `MYSQL_URL` 加入本工具的環境變數（在 Railway 可直接以
-   `${{MySQL.MYSQL_URL}}` 的方式參照另一個 service 的變數）。
-3. 重新部署後，伺服器會偵測到 `MYSQL_URL`，自動建立所需的資料表（教師、值勤表、
+1. 在 Railway 專案中按 **+ New** → **Database** → **Add PostgreSQL**，建立一個
+   PostgreSQL service。
+2. 在本工具的 service 的 **Variables** 分頁，新增一個參照變數，把 PostgreSQL service
+   提供的 `DATABASE_URL` 加入本工具的環境變數（在 Railway 可直接以
+   `${{Postgres.DATABASE_URL}}` 的方式參照另一個 service 的變數）。
+3. 重新部署後，伺服器會偵測到 `DATABASE_URL`，自動建立所需的資料表（教師、值勤表、
    時段、職務等），並在資料表為空時載入預設的老師名單及範例值勤表。
-4. 之後即可移除 SQLite 所用的 Volume（如有設定）。
 
-除了 `MYSQL_URL`，亦支援以下環境變數（優先順序：`MYSQL_URL` > `DATABASE_URL` >
-`MYSQL_PUBLIC_URL` > 由 `MYSQLHOST`/`MYSQLUSER`/`MYSQLPASSWORD`/`MYSQLDATABASE`/`MYSQLPORT`
-組合而成的連線字串）。這些變數都是 Railway 的 MySQL plugin 會自動提供的名稱，
-本機開發若沒有設定任何一個，則會自動改用 SQLite。
+這樣老師名單、值勤表等資料就會儲存在 PostgreSQL，重新部署後不會遺失。
