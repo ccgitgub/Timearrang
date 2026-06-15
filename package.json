@@ -11,6 +11,7 @@
     "node": ">=22.5.0"
   },
   "dependencies": {
+    "docx": "^9.7.1",
     "express": "^4.19.2"
   }
 }

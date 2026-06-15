@@ -1,7 +1,9 @@
 const path = require('node:path');
 const express = require('express');
+const { Packer } = require('docx');
 const db = require('./db');
 const { generateAssignments, durationMinutes } = require('./lib/scheduler');
+const { buildScheduleDocument } = require('./lib/exportDocx');
 
 const app = express();
 app.use(express.json());
@@ -345,6 +347,25 @@ app.get('/api/schedules/:id/summary', (req, res) => {
   }
 
   res.json([...totals.values()]);
+});
+
+// ---------- export ----------
+
+app.get('/api/schedules/:id/export.docx', async (req, res) => {
+  const detail = getScheduleDetail(req.params.id);
+  if (!detail) return res.status(404).json({ error: '找不到表格' });
+
+  const teachers = db.prepare('SELECT * FROM teachers ORDER BY sort_order, id').all();
+  const doc = buildScheduleDocument({ schedule: detail.schedule, timeSlots: detail.timeSlots, teachers });
+  const buffer = await Packer.toBuffer(doc);
+
+  const safeName = (detail.schedule.name || 'schedule').replace(/[\\/:*?"<>|]/g, '_');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="schedule.docx"; filename*=UTF-8''${encodeURIComponent(safeName)}.docx`
+  );
+  res.send(buffer);
 });
 
 const PORT = process.env.PORT || 3000;

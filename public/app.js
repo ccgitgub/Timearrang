@@ -509,6 +509,11 @@ function renderPreviewTable(timeSlots) {
   table.innerHTML = html;
 }
 
+document.getElementById('exportDocxBtn').addEventListener('click', () => {
+  if (!state.currentScheduleId) return;
+  window.location.href = `/api/schedules/${state.currentScheduleId}/export.docx`;
+});
+
 document.getElementById('exportCsvBtn').addEventListener('click', () => {
   const table = document.getElementById('previewTable');
   const rows = [...table.querySelectorAll('tr')].map((row) =>
