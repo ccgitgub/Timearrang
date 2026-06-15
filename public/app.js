@@ -538,6 +538,23 @@ document.getElementById('exportCsvBtn').addEventListener('click', () => {
 
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 
+// ---------- 儲存到資料庫 ----------
+
+document.getElementById('saveAllBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('saveAllBtn');
+  btn.disabled = true;
+  try {
+    await loadTeachers();
+    await loadSchedules();
+    if (state.currentScheduleId) await loadDetail();
+    showToast('已儲存到資料庫');
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ---------- init ----------
 
 (async function init() {
