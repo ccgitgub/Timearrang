@@ -57,4 +57,18 @@ CREATE TABLE IF NOT EXISTS assignments (
 );
 `);
 
+// 預設老師名單（取自原始活動分工表），僅在老師名單為空時插入一次
+const DEFAULT_TEACHERS = [
+  'A時', 'B東', 'C思', 'D浩', 'E緻', 'F刁', 'G謝', 'H芬', 'I珍', 'K甄',
+  'L佩', 'M婉', 'N慧', 'P妍', 'Q劉', 'R珊', 'S涼', 'T毛', 'V祖', 'X樊',
+  'Y曉', 'Z蘇', 'BB勤', 'DD珈', 'EE依', 'FF賢', 'GG華', 'HH兒', 'JJ瑩',
+  'KK敏', 'OO萍', 'VV英', 'WW練',
+];
+
+const teacherCount = db.prepare('SELECT COUNT(*) AS count FROM teachers').get().count;
+if (teacherCount === 0) {
+  const insertTeacher = db.prepare('INSERT INTO teachers (name, active, sort_order) VALUES (?, 1, ?)');
+  DEFAULT_TEACHERS.forEach((name, index) => insertTeacher.run(name, index));
+}
+
 module.exports = db;
