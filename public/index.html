@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>老師值勤時間分配工具</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>老師值勤時間分配工具</h1>
+    <p class="subtitle">自動將每位老師的值勤時數盡量平均分配，亦可手動調整</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="teachers">老師名單</button>
+    <button class="tab-btn" data-tab="schedules">值勤表</button>
+    <button class="tab-btn" data-tab="editor" id="editorTabBtn" disabled>編排 &amp; 分配</button>
+  </nav>
+
+  <main>
+    <!-- 老師名單 -->
+    <section id="tab-teachers" class="tab-content active">
+      <div class="card">
+        <h2>老師名單</h2>
+        <p class="hint">新增所有可被分配值勤的老師。取消「在職」後，自動分配時會排除該老師（例如請假）。</p>
+        <form id="addTeacherForm" class="inline-form">
+          <input type="text" id="newTeacherName" placeholder="老師姓名 / 編號 (例如：A陳)" required>
+          <button type="submit" class="primary">新增老師</button>
+        </form>
+        <table class="data-table">
+          <thead><tr><th>姓名 / 編號</th><th>在職</th><th></th></tr></thead>
+          <tbody id="teacherTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 值勤表列表 -->
+    <section id="tab-schedules" class="tab-content">
+      <div class="card">
+        <h2>值勤表</h2>
+        <p class="hint">每張表代表一天 (或一個活動) 的值勤編排。可從現有表格「複製」以重用相同的時段及職務設定。</p>
+        <form id="addScheduleForm" class="inline-form">
+          <input type="text" id="newScheduleName" placeholder="表格名稱 (例如：15/6 星期一)" required>
+          <input type="date" id="newScheduleDate">
+          <button type="submit" class="primary">新增表格</button>
+        </form>
+        <table class="data-table">
+          <thead><tr><th>名稱</th><th>日期</th><th></th></tr></thead>
+          <tbody id="scheduleTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 編排 & 分配 -->
+    <section id="tab-editor" class="tab-content">
+      <div class="card">
+        <h2>表格設定</h2>
+        <form id="scheduleMetaForm" class="inline-form">
+          <input type="text" id="scheduleName" placeholder="表格名稱" required>
+          <input type="date" id="scheduleDate">
+          <button type="submit" class="primary">儲存名稱 / 日期</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>時段設定</h2>
+        <p class="hint">先新增時段 (例如 8:30–9:20)，再為每個時段加入需要值勤的職務及所需人數。</p>
+        <form id="addSlotForm" class="inline-form">
+          <input type="text" id="slotLabel" placeholder="時段名稱 (例如：早會)" required>
+          <input type="time" id="slotStart" required>
+          <span>至</span>
+          <input type="time" id="slotEnd" required>
+          <button type="submit" class="primary">新增時段</button>
+        </form>
+        <div id="slotsContainer"></div>
+      </div>
+
+      <div class="card">
+        <h2>自動分配</h2>
+        <p class="hint">按下按鈕後，系統會盡量令每位在職老師的「值勤總時數」相等。可重複按以重新分配，亦可在下方表格手動調整個別安排。</p>
+        <button id="generateBtn" class="primary large">平均分配 / 重新分配</button>
+      </div>
+
+      <div class="card" id="resultCard" style="display:none">
+        <h2>值勤分配（可手動調整）</h2>
+        <div class="table-scroll">
+          <table class="data-table" id="assignmentTable">
+            <thead><tr><th>時段</th><th>時長</th><th>職務</th><th>編號</th><th>負責老師</th></tr></thead>
+            <tbody id="assignmentTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="previewCard" style="display:none">
+        <h2>老師時間表預覽</h2>
+        <div class="preview-actions">
+          <button id="exportCsvBtn">匯出 CSV</button>
+          <button id="printBtn">列印</button>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table preview-table" id="previewTable"></table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

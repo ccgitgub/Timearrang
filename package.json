@@ -1,0 +1,16 @@
+{
+  "name": "timearrang",
+  "version": "1.0.0",
+  "description": "老師值勤時間分配工具 - 自動平均分配每位老師的值勤時數",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
