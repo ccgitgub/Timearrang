@@ -71,4 +71,21 @@ if (teacherCount === 0) {
   DEFAULT_TEACHERS.forEach((name, index) => insertTeacher.run(name, index));
 }
 
+// 預設值勤表（取自原始活動分工表的時段），僅在尚未有任何值勤表時建立一次
+const DEFAULT_SLOTS = [
+  ['第一節', '08:30', '09:20'],
+  ['第二節', '09:20', '10:10'],
+  ['第三節', '10:25', '11:15'],
+  ['第四節', '11:15', '12:05'],
+  ['第五節', '12:25', '12:50'],
+  ['第六節', '12:50', '13:00'],
+];
+
+const scheduleCount = db.prepare('SELECT COUNT(*) AS count FROM schedules').get().count;
+if (scheduleCount === 0) {
+  const scheduleId = db.prepare('INSERT INTO schedules (name, date) VALUES (?, ?)').run('15/6/2026(一)', '2026-06-15').lastInsertRowid;
+  const insertSlot = db.prepare('INSERT INTO time_slots (schedule_id, label, start_time, end_time, sort_order) VALUES (?, ?, ?, ?, ?)');
+  DEFAULT_SLOTS.forEach(([label, start, end], index) => insertSlot.run(scheduleId, label, start, end, index));
+}
+
 module.exports = db;
