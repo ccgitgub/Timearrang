@@ -142,8 +142,9 @@ app.put('/api/schedules/:id/lock-last-slot', wrap(async (req, res) => {
   const locked = req.body.locked ? 1 : 0;
   await db.run('UPDATE schedules SET lock_last_slot = ? WHERE id = ?', [locked, schedule.id]);
 
+  // 鎖定目標：時間最晚、且非鏈結時段、且非「排除上一節」時段（即第五節）
   const lastSlot = await db.get(
-    'SELECT * FROM time_slots WHERE schedule_id = ? ORDER BY start_time DESC, id DESC LIMIT 1',
+    'SELECT * FROM time_slots WHERE schedule_id = ? AND (chain_source_label IS NULL) AND (excl_prev_teachers = 0 OR excl_prev_teachers IS NULL) ORDER BY start_time DESC, id DESC LIMIT 1',
     [schedule.id]
   );
   if (lastSlot) {
@@ -189,12 +190,10 @@ app.post('/api/schedules/:id/duplicate', wrap(async (req, res) => {
   const slots = await db.all('SELECT * FROM time_slots WHERE schedule_id = ? ORDER BY start_time, id', [src.id]);
   for (const slot of slots) {
     const newSlotId = (
-      await db.run('INSERT INTO time_slots (schedule_id, label, start_time, end_time) VALUES (?, ?, ?, ?)', [
-        newId,
-        slot.label,
-        slot.start_time,
-        slot.end_time,
-      ])
+      await db.run(
+        'INSERT INTO time_slots (schedule_id, label, start_time, end_time, sort_order, chain_source_label, excl_prev_teachers) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [newId, slot.label, slot.start_time, slot.end_time, slot.sort_order || 0, slot.chain_source_label || null, slot.excl_prev_teachers || 0]
+      )
     ).lastInsertRowid;
 
     const duties = await db.all('SELECT * FROM duties WHERE time_slot_id = ? ORDER BY id', [slot.id]);
@@ -349,8 +348,11 @@ app.post('/api/schedules/:id/generate', wrap(async (req, res) => {
 
   const slotsForAlgo = detail.timeSlots.map((slot) => ({
     id: slot.id,
+    label: slot.label,
     start_time: slot.start_time,
     end_time: slot.end_time,
+    chainFromLabel: slot.chain_source_label || null,
+    hardExclPrevTeachers: !!slot.excl_prev_teachers,
     duties: slot.duties.map((d) => ({
       id: d.id,
       name: d.name,
