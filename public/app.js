@@ -482,7 +482,6 @@ document.getElementById('assignmentTableBody').addEventListener('change', async 
 
 function renderPreviewTable(timeSlots) {
   const table = document.getElementById('previewTable');
-  const activeTeachers = state.teachers.filter((t) => t.active);
 
   const totals = new Map(state.teachers.map((t) => [t.id, { minutes: 0, count: 0 }]));
   const cellMap = new Map();
@@ -506,18 +505,23 @@ function renderPreviewTable(timeSlots) {
   }
   html += '<th>總值勤時數</th><th>總次數</th></tr></thead><tbody>';
 
-  if (activeTeachers.length === 0) {
-    html += `<tr><td colspan="${timeSlots.length + 3}" class="empty-msg">尚未新增在職老師</td></tr>`;
+  if (state.teachers.length === 0) {
+    html += `<tr><td colspan="${timeSlots.length + 3}" class="empty-msg">尚未新增老師</td></tr>`;
   } else {
-    for (const t of activeTeachers) {
-      html += `<tr><td>${escapeHtml(t.name)}</td>`;
-      for (const slot of timeSlots) {
-        const cell = cellMap.get(`${t.id}_${slot.id}`) || [];
-        html += `<td>${cell.map(escapeHtml).join('<br>') || '-'}</td>`;
+    for (const t of state.teachers) {
+      if (!t.active) {
+        const leaveCells = timeSlots.map(() => '<td class="leave-cell">請假</td>').join('');
+        html += `<tr class="leave-row"><td>${escapeHtml(t.name)}</td>${leaveCells}<td class="total-cell leave-cell">-</td><td class="total-cell leave-cell">-</td></tr>`;
+      } else {
+        html += `<tr><td>${escapeHtml(t.name)}</td>`;
+        for (const slot of timeSlots) {
+          const cell = cellMap.get(`${t.id}_${slot.id}`) || [];
+          html += `<td>${cell.map(escapeHtml).join('<br>') || '-'}</td>`;
+        }
+        const total = totals.get(t.id);
+        html += `<td class="total-cell">${formatMinutes(total.minutes)}</td><td class="total-cell">${total.count}</td>`;
+        html += '</tr>';
       }
-      const total = totals.get(t.id);
-      html += `<td class="total-cell">${formatMinutes(total.minutes)}</td><td class="total-cell">${total.count}</td>`;
-      html += '</tr>';
     }
   }
   html += '</tbody>';
