@@ -364,7 +364,13 @@ app.post('/api/schedules/:id/generate', wrap(async (req, res) => {
     unavailable: new Set(slot.unavailable.map((u) => u.teacher_id)),
   }));
 
-  const results = generateAssignments(teachers, slotsForAlgo);
+  const classTeacherMap = new Map();
+  for (const [dutyName, teacherName] of Object.entries(CLASS_TEACHERS)) {
+    const t = teachers.find((t) => t.name === teacherName);
+    if (t) classTeacherMap.set(dutyName, t.id);
+  }
+
+  const results = generateAssignments(teachers, slotsForAlgo, { classTeacherMap });
 
   for (const r of results) {
     await db.run('UPDATE assignments SET teacher_id = ? WHERE duty_id = ? AND slot_index = ?', [
