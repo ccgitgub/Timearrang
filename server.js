@@ -353,6 +353,7 @@ app.post('/api/schedules/:id/generate', wrap(async (req, res) => {
     end_time: slot.end_time,
     duties: slot.duties.map((d) => ({
       id: d.id,
+      name: d.name,
       needed_count: d.needed_count,
       lockedSeats: new Map(
         d.assignments.filter((a) => a.locked && a.teacher_id != null).map((a) => [a.slot_index, a.teacher_id])
